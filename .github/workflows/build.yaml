@@ -1,0 +1,69 @@
+name: Build
+
+on:
+  workflow_dispatch:
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  TZ: Asia/Shanghai
+  LIBBT_VERSION: RC_1_1
+  QBT_VERSION: v4_1_x
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 配置 QEMU 跨架构支持
+        uses: docker/setup-qemu-action@v3
+
+      - name: 配置 Docker Buildx 构建工具
+        uses: docker/setup-buildx-action@v3
+
+      - name: 登录 GHCR 镜像仓库
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 构建并推送 Docker 镜像
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          platforms: linux/amd64, linux/arm64
+          build-args: |
+            LIBBT_BRANCH=${{ env.LIBBT_VERSION }}
+            QBT_BRANCH=${{ env.QBT_VERSION }}
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ env.QBT_VERSION }}
+            ghcr.io/${{ github.repository }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: 发送构建结果至 Telegram
+        uses: appleboy/telegram-action@v1.0.1
+        if: always()
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          format: html
+          message: |
+            <b>🚀 qBittorrent 构建报告</b>
+
+            ${{ job.status == 'success' && '✅ 成功' || '❌ 失败' }}
+
+            <b>📦 项目信息</b>
+            仓库：<code>${{ github.repository }}</code>
+            分支：<code>${{ github.ref_name }}</code>
+            编号：<code>${{ github.run_number }}</code>
+            版本：<code>${{ env.QBT_VERSION }}</code>
+
+            <b>👤 触发信息</b>
+            账号：<code>${{ github.actor }}</code>
+            触发：<code>${{ github.event_name }}</code>
+            哈希：<code>${{ github.sha }}</code>
+
+            <b>🔗 快速链接</b>
+            <a href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}">📋 查看完整日志</a>
+            <a href="https://github.com/${{ github.repository }}/commit/${{ github.sha }}">💻 查看代码变更</a>
