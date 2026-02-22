@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1
+
 FROM alpine:3.10 AS builder
 
 ARG LIBBT_BRANCH QBT_BRANCH
@@ -5,7 +7,7 @@ ARG LIBBT_BRANCH QBT_BRANCH
 COPY entrypoint.sh /opt/
 
 RUN <<EOF
-set -euo pipefail
+set -euxo pipefail
 apk --cache=no upgrade
 apk --cache=no add -t build-dependencies autoconf automake boost-dev boost-static build-base cmake geoip-dev git libtool openssl-dev pkgconfig qt5-qtbase-dev qt5-qtsvg-dev qt5-qttools-dev zlib-dev
 git clone -b $LIBBT_BRANCH --recurse-submodules --depth=1 --single-branch --shallow-submodules https://github.com/arvidn/libtorrent /tmp/libtorrent
@@ -25,7 +27,7 @@ EOF
 FROM alpine:3.10
 
 RUN --mount=type=bind,from=builder,source=/opt,target=/opt <<EOF
-set -euo pipefail
+set -euxo pipefail
 apk --cache=no upgrade
 apk --cache=no add qt5-qtbase su-exec tini
 cp -af /opt/entrypoint.sh /
