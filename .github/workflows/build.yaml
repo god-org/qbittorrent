@@ -27,7 +27,7 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 构建并推送 Docker 镜像
+      - name: 构建并推送 GHCR 镜像仓库
         uses: docker/build-push-action@v6
         with:
           push: true
@@ -36,8 +36,8 @@ jobs:
             LIBBT_BRANCH=${{ env.LIBBT_VERSION }}
             QBT_BRANCH=${{ env.QBT_VERSION }}
           tags: |
-            ghcr.io/${{ github.repository }}:${{ env.QBT_VERSION }}
             ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:${{ env.QBT_VERSION }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

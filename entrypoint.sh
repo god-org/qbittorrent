@@ -1,22 +1,26 @@
 #!/bin/sh
 
-DOWNLOADSPATH="/downloads"
-PROFILEPATH="/config"
-QBTCONFIGFILE="$PROFILEPATH/qBittorrent/config/qBittorrent.conf"
+set -euo pipefail
 
-if [ -n "$PUID" ] && [ "$PUID" != "$(id -u qbittorrent)" ]; then
-    sed -i "s|^qbittorrent:x:[0-9]*:|qbittorrent:x:$PUID:|g" "/etc/passwd"
+PUID=${PUID:-1000}
+PGID=${PGID:-1000}
+UMASK=${UMASK:-022}
+DOWNLOADSPATH=/downloads
+PROFILEPATH=/config
+QBTCONFIGFILE=$PROFILEPATH/qBittorrent/config/qBittorrent.conf
+
+if [ $PUID != $(id -u qbittorrent) ]; then
+    sed -i "s/^qbittorrent:x:[0-9]*:/qbittorrent:x:$PUID:/g" /etc/passwd
 fi
 
-if [ -n "$PGID" ] && [ "$PGID" != "$(id -g qbittorrent)" ]; then
-    sed -i "s|^\(qbittorrent:x:[0-9]*\):[0-9]*:|\1:$PGID:|g" "/etc/passwd"
-    sed -i "s|^qbittorrent:x:[0-9]*:|qbittorrent:x:$PGID:|g" "/etc/group"
+if [ $PGID != $(id -g qbittorrent) ]; then
+    sed -i "s/^\(qbittorrent:x:[0-9]*\):[0-9]*:/\1:$PGID:/g" /etc/passwd
+    sed -i "s/^qbittorrent:x:[0-9]*:/qbittorrent:x:$PGID:/g" /etc/group
 fi
 
-if [ ! -f "$QBTCONFIGFILE" ]; then
-    mkdir -p "$(dirname "$QBTCONFIGFILE")"
-
-    cat <<EOF >"$QBTCONFIGFILE"
+if [ ! -f $QBTCONFIGFILE ]; then
+    mkdir -p $(dirname $QBTCONFIGFILE)
+    cat <<EOF >$QBTCONFIGFILE
 [LegalNotice]
 Accepted=true
 
@@ -27,16 +31,16 @@ Downloads\TempPath=$DOWNLOADSPATH/temp
 EOF
 fi
 
-if [ -d "$DOWNLOADSPATH" ]; then
-    chown "qbittorrent":"qbittorrent" "$DOWNLOADSPATH"
+if [ -d $DOWNLOADSPATH ] && [ $(stat -c %u $DOWNLOADSPATH) != $PUID ]; then
+    chown qbittorrent:qbittorrent $DOWNLOADSPATH
 fi
 
-if [ -d "$PROFILEPATH" ]; then
-    chown "qbittorrent":"qbittorrent" -R "$PROFILEPATH"
+if [ -d $PROFILEPATH ] && [ $(stat -c %u $PROFILEPATH) != $PUID ]; then
+    chown qbittorrent:qbittorrent -R $PROFILEPATH
 fi
 
-if [ -n "$UMASK" ]; then
-    umask "$UMASK"
+if [ $UMASK != 022 ]; then
+    umask $UMASK
 fi
 
-exec doas -u "qbittorrent" qbittorrent-nox --profile="$PROFILEPATH" "$@"
+exec su-exec qbittorrent qbittorrent-nox --profile=$PROFILEPATH "$@"
