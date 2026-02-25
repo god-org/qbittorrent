@@ -2,7 +2,7 @@ FROM alpine:3.10 AS builder
 
 ARG LIBBT_BRANCH QBT_BRANCH
 
-COPY entrypoint.sh /opt/
+COPY --link entrypoint.sh /opt/
 
 RUN <<EOF
 set -euxo pipefail
