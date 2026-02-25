@@ -2,45 +2,81 @@
 
 set -euo pipefail
 
-PUID=${PUID:-1000}
-PGID=${PGID:-1000}
-UMASK=${UMASK:-022}
-DOWNLOADSPATH=/downloads
-PROFILEPATH=/config
-QBTCONFIGFILE=$PROFILEPATH/qBittorrent/config/qBittorrent.conf
+USER_NAME='qbittorrent'
+DOWNLOADS_PATH='/downloads'
+PROFILE_PATH='/config'
+CONFIG_FILE_PATH="${PROFILE_PATH}/qBittorrent/config/qBittorrent.conf"
 
-if [ $PUID != $(id -u qbittorrent) ]; then
-    sed -i "s/^qbittorrent:x:[0-9]*:/qbittorrent:x:$PUID:/g" /etc/passwd
-fi
+sync_ids() {
+  local puid_val pgid_val cur_uid cur_gid
 
-if [ $PGID != $(id -g qbittorrent) ]; then
-    sed -i "s/^\(qbittorrent:x:[0-9]*\):[0-9]*:/\1:$PGID:/g" /etc/passwd
-    sed -i "s/^qbittorrent:x:[0-9]*:/qbittorrent:x:$PGID:/g" /etc/group
-fi
+  puid_val="${PUID:-1000}"
+  pgid_val="${PGID:-1000}"
 
-if [ ! -f $QBTCONFIGFILE ]; then
-    mkdir -p $(dirname $QBTCONFIGFILE)
-    cat <<EOF >$QBTCONFIGFILE
+  cur_uid=$(id -u "${USER_NAME}")
+  if [ "${cur_uid}" -ne "${puid_val}" ]; then
+    sed -i "s/^${USER_NAME}:x:[0-9]*:/${USER_NAME}:x:${puid_val}:/g" /etc/passwd
+  fi
+
+  cur_gid=$(id -g "${USER_NAME}")
+  if [ "${cur_gid}" -ne "${pgid_val}" ]; then
+    sed -i "s/^\(${USER_NAME}:x:[0-9]*\):[0-9]*:/\1:${pgid_val}:/g" /etc/passwd
+    sed -i "s/^${USER_NAME}:x:[0-9]*:/${USER_NAME}:x:${pgid_val}:/g" /etc/group
+  fi
+}
+
+init_config() {
+  local conf_dir downloads_dir
+  conf_dir="${CONFIG_FILE_PATH%/*}"
+  downloads_dir="${DOWNLOADS_PATH}"
+
+  if [ ! -f "${CONFIG_FILE_PATH}" ]; then
+    mkdir -p "${conf_dir}"
+    cat <<EOF >"${CONFIG_FILE_PATH}"
 [LegalNotice]
 Accepted=true
 
 [Preferences]
 Connection\PortRangeMin=8999
-Downloads\SavePath=$DOWNLOADSPATH
-Downloads\TempPath=$DOWNLOADSPATH/temp
+Downloads\SavePath=${downloads_dir}
+Downloads\TempPath=${downloads_dir}/temp
 EOF
-fi
+  fi
+}
 
-if [ -d $DOWNLOADSPATH ] && [ $(stat -c %u $DOWNLOADSPATH) != $PUID ]; then
-    chown qbittorrent:qbittorrent $DOWNLOADSPATH
-fi
+fix_permissions() {
+  local target_uid
+  target_uid="${PUID:-1000}"
 
-if [ -d $PROFILEPATH ] && [ $(stat -c %u $PROFILEPATH) != $PUID ]; then
-    chown qbittorrent:qbittorrent -R $PROFILEPATH
-fi
+  if [ -d "${DOWNLOADS_PATH}" ]; then
+    if [ "$(stat -c %u "${DOWNLOADS_PATH}")" -ne "${target_uid}" ]; then
+      chown "${USER_NAME}:${USER_NAME}" "${DOWNLOADS_PATH}"
+    fi
+  fi
 
-if [ $UMASK != 022 ]; then
-    umask $UMASK
-fi
+  if [ -d "${PROFILE_PATH}" ]; then
+    if [ "$(stat -c %u "${PROFILE_PATH}")" -ne "${target_uid}" ]; then
+      chown -R "${USER_NAME}:${USER_NAME}" "${PROFILE_PATH}"
+    fi
+  fi
+}
 
-exec su-exec qbittorrent qbittorrent-nox --profile=$PROFILEPATH "$@"
+main() {
+  local target_umask
+  target_umask="${UMASK:-022}"
+
+  sync_ids
+  init_config
+  fix_permissions
+
+  if [ "${target_umask}" != '022' ]; then
+    umask "${target_umask}"
+  fi
+
+  unset -f sync_ids init_config fix_permissions main
+  unset USER_NAME DOWNLOADS_PATH PROFILE_PATH CONFIG_FILE_PATH
+
+  exec su-exec qbittorrent qbittorrent-nox --profile='/config' "$@"
+}
+
+main "$@"
