@@ -1,15 +1,11 @@
 #!/bin/sh
 
-set -euo pipefail
-
 USER_NAME='qbittorrent'
 DOWNLOADS_PATH='/downloads'
 PROFILE_PATH='/config'
 CONFIG_FILE_PATH="${PROFILE_PATH}/qBittorrent/config/qBittorrent.conf"
 
 sync_ids() {
-  local puid_val pgid_val cur_uid cur_gid
-
   puid_val="${PUID:-1000}"
   pgid_val="${PGID:-1000}"
 
@@ -23,10 +19,11 @@ sync_ids() {
     sed -i "s/^\(${USER_NAME}:x:[0-9]*\):[0-9]*:/\1:${pgid_val}:/g" /etc/passwd
     sed -i "s/^${USER_NAME}:x:[0-9]*:/${USER_NAME}:x:${pgid_val}:/g" /etc/group
   fi
+
+  unset puid_val pgid_val cur_uid cur_gid
 }
 
 init_config() {
-  local conf_dir downloads_dir
   conf_dir="${CONFIG_FILE_PATH%/*}"
   downloads_dir="${DOWNLOADS_PATH}"
 
@@ -42,10 +39,11 @@ Downloads\SavePath=${downloads_dir}
 Downloads\TempPath=${downloads_dir}/temp
 EOF
   fi
+
+  unset conf_dir downloads_dir
 }
 
 fix_permissions() {
-  local target_uid
   target_uid="${PUID:-1000}"
 
   if [ -d "${DOWNLOADS_PATH}" ]; then
@@ -59,10 +57,11 @@ fix_permissions() {
       chown -R "${USER_NAME}:${USER_NAME}" "${PROFILE_PATH}"
     fi
   fi
+
+  unset target_uid
 }
 
 main() {
-  local target_umask
   target_umask="${UMASK:-022}"
 
   sync_ids
@@ -73,6 +72,7 @@ main() {
     umask "${target_umask}"
   fi
 
+  unset target_umask
   unset -f sync_ids init_config fix_permissions main
   unset USER_NAME DOWNLOADS_PATH PROFILE_PATH CONFIG_FILE_PATH
 
