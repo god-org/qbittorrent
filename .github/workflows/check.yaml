@@ -10,20 +10,20 @@ env:
 jobs:
   check:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -euxo pipefail {0}
     steps:
       - name: 检出当前仓库代码
         uses: actions/checkout@v6
 
       - name: 获取远程最新提交哈希
         id: getHash
-        shell: bash
         env:
-          REPO_URL: https://github.com/qbittorrent/qBittorrent
+          REPO_PATH: qbittorrent/qBittorrent
           REPO_BRANCH: v4_1_x
         run: |
-          set -euxo pipefail
-          remote_output=$(git ls-remote "${REPO_URL}" "${REPO_BRANCH}")
-          commit_hash="${remote_output%%[[:space:]]*}"
+          commit_hash=$(gh api "/repos/${REPO_PATH}/commits/${REPO_BRANCH}" -q '.sha')
           echo "commitHash=${commit_hash}" >>"${GITHUB_OUTPUT}"
 
       - name: 对比提交哈希（缓存校验）
@@ -35,16 +35,12 @@ jobs:
 
       - name: 保存新的提交哈希到文件
         if: steps.cacheHash.outputs.cache-hit != 'true'
-        shell: bash
         env:
-          NEW_HASH: ${{ steps.getHash.outputs.commitHash }}
+          COMMIT_HASH: ${{ steps.getHash.outputs.commitHash }}
         run: |
-          set -euxo pipefail
-          echo "${NEW_HASH}" >.commitHash
+          echo "${COMMIT_HASH}" >.commitHash
 
       - name: 触发构建工作流
         if: steps.cacheHash.outputs.cache-hit != 'true'
-        shell: bash
         run: |
-          set -euxo pipefail
           gh workflow run Build

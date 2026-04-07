@@ -2,7 +2,7 @@ FROM alpine:3.10 AS builder
 
 ARG LIBBT_BRANCH QBT_BRANCH
 
-COPY --link entrypoint.sh /opt/
+COPY --chmod=755 --link entrypoint.sh /opt/
 
 RUN <<EOF
 set -euxo pipefail
@@ -12,7 +12,8 @@ apk --no-cache add -t build-dependencies \
   autoconf automake boost-dev boost-static build-base \
   cmake geoip-dev git libtool openssl-dev pkgconfig \
   qt5-qtbase-dev qt5-qtsvg-dev qt5-qttools-dev zlib-dev
-git clone -b "${LIBBT_BRANCH:-master}" --recurse-submodules --depth=1 --single-branch --shallow-submodules https://github.com/arvidn/libtorrent /tmp/libtorrent
+git clone -b "${LIBBT_BRANCH}" --recurse-submodules --depth=1 --single-branch \
+  --shallow-submodules https://github.com/arvidn/libtorrent /tmp/libtorrent
 cd /tmp/libtorrent
 cmake \
   -DBUILD_SHARED_LIBS=OFF \
@@ -23,7 +24,8 @@ cmake \
   -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON \
   -Ddeprecated-functions=OFF
 make -j"${thread_count}" install
-git clone -b "${QBT_BRANCH:-master}" --depth=1 --single-branch https://github.com/qbittorrent/qBittorrent /tmp/qBittorrent
+git clone -b "${QBT_BRANCH}" --depth=1 --single-branch \
+  https://github.com/qbittorrent/qBittorrent /tmp/qBittorrent
 cd /tmp/qBittorrent
 ./configure --prefix=/usr --disable-gui
 make -j"${thread_count}" install
