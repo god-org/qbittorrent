@@ -1,6 +1,6 @@
 FROM alpine:3.10 AS builder
 
-ARG LIBBT_BRANCH QBT_BRANCH
+ARG QB_BR LT_BR
 
 COPY --chmod=755 --link entrypoint.sh /opt/
 
@@ -12,7 +12,7 @@ apk --no-cache add -t build-dependencies \
   autoconf automake boost-dev boost-static build-base \
   cmake geoip-dev git libtool openssl-dev pkgconfig \
   qt5-qtbase-dev qt5-qtsvg-dev qt5-qttools-dev zlib-dev
-git clone -b "${LIBBT_BRANCH}" --recurse-submodules --depth=1 --single-branch \
+git clone -b "$LT_BR" --recurse-submodules --depth=1 --single-branch \
   --shallow-submodules https://github.com/arvidn/libtorrent /tmp/libtorrent
 cd /tmp/libtorrent
 cmake \
@@ -23,12 +23,12 @@ cmake \
   -DCMAKE_INSTALL_LIBDIR=lib \
   -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON \
   -Ddeprecated-functions=OFF
-make -j"${thread_count}" install
-git clone -b "${QBT_BRANCH}" --depth=1 --single-branch \
+make -j"$thread_count" install
+git clone -b "$QB_BR" --depth=1 --single-branch \
   https://github.com/qbittorrent/qBittorrent /tmp/qBittorrent
 cd /tmp/qBittorrent
 ./configure --prefix=/usr --disable-gui
-make -j"${thread_count}" install
+make -j"$thread_count" install
 ldd /usr/bin/qbittorrent-nox | sort -f
 cp -af /usr/bin/qbittorrent-nox /opt/
 chmod -R +x /opt

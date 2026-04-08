@@ -10,44 +10,57 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -euxo pipefail {0}
+    env:
+      QB_BR: v4_1_x
+      LT_BR: RC_1_1
     steps:
       - name: 配置 QEMU 跨架构支持
-        uses: docker/setup-qemu-action@v4
+        uses: docker/setup-qemu-action@v4.0.0
 
       - name: 配置 Docker Buildx 构建工具
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@v4.0.0
 
       - name: 登录 Docker 镜像仓库
-        uses: docker/login-action@v4
+        uses: docker/login-action@v4.1.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: 登录 GHCR 镜像仓库
-        uses: docker/login-action@v4
+        uses: docker/login-action@v4.1.0
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 构建并推送 GHCR 镜像仓库
-        uses: docker/build-push-action@v7
+      - name: 生成标签
+        id: tag
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          tag_list=(
+            "ghcr.io/$REPO:latest"
+            "ghcr.io/$REPO:$QB_BR-$LT_BR"
+          )
+
+          printf '%s\n' 'tags<<EOF' "${tag_list[@]}" 'EOF' >>"$GITHUB_OUTPUT"
+
+      - name: 构建并推送镜像
+        uses: docker/build-push-action@v7.0.0
         with:
           push: true
           platforms: linux/amd64, linux/arm64
           build-args: |
-            LIBBT_BRANCH=${{ env.LIBBT_VERSION }}
-            QBT_BRANCH=${{ env.QBT_VERSION }}
-          tags: |
-            ghcr.io/${{ github.repository }}:latest
-            ghcr.io/${{ github.repository }}:${{ env.QBT_VERSION }}
+            QB_BR=${{ env.QB_BR }}
+            LT_BR=${{ env.LT_BR }}
+          tags: ${{ steps.tag.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-        env:
-          LIBBT_VERSION: RC_1_1
-          QBT_VERSION: v4_1_x
 
-      - name: 发送构建结果至 Telegram
+      - name: 发送结果至 Telegram
         uses: appleboy/telegram-action@v1.0.1
         if: always()
         with:
@@ -63,7 +76,7 @@ jobs:
             仓库：<code>${{ github.repository }}</code>
             分支：<code>${{ github.ref_name }}</code>
             编号：<code>${{ github.run_number }}</code>
-            版本：<code>${{ env.QBT_VERSION }}</code>
+            版本：<code>${{ env.QB_BR }}-${{ env.LT_BR }}</code>
 
             <b>👤 触发信息</b>
             账号：<code>${{ github.actor }}</code>

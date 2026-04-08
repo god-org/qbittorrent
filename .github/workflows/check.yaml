@@ -14,33 +14,30 @@ jobs:
       run:
         shell: bash -euxo pipefail {0}
     steps:
-      - name: 检出当前仓库代码
-        uses: actions/checkout@v6
+      - name: 检出代码
+        uses: actions/checkout@v6.0.2
 
-      - name: 获取远程最新提交哈希
-        id: getHash
+      - name: 获取信息
+        id: get
         env:
-          REPO_PATH: qbittorrent/qBittorrent
-          REPO_BRANCH: v4_1_x
+          QB_REPO: qbittorrent/qBittorrent
+          QB_BR: v4_1_x
+          LT_REPO: arvidn/libtorrent
+          LT_BR: RC_1_1
         run: |
-          commit_hash=$(gh api "/repos/${REPO_PATH}/commits/${REPO_BRANCH}" -q '.sha')
-          echo "commitHash=${commit_hash}" >>"${GITHUB_OUTPUT}"
+          qb_sha=$(gh api "/repos/$QB_REPO/commits/$QB_BR" -q '.sha')
+          lt_sha=$(gh api "/repos/$LT_REPO/commits/$LT_BR" -q '.sha')
+          echo "cache=$qb_sha-$lt_sha" >>"$GITHUB_OUTPUT"
 
-      - name: 对比提交哈希（缓存校验）
-        id: cacheHash
-        uses: actions/cache@v5
+      - name: 缓存校验
+        id: cache
+        uses: actions/cache@v5.0.4
         with:
-          path: .commitHash
-          key: commitHash_${{ steps.getHash.outputs.commitHash }}
+          path: .cache
+          key: ${{ steps.get.outputs.cache }}
 
-      - name: 保存新的提交哈希到文件
-        if: steps.cacheHash.outputs.cache-hit != 'true'
-        env:
-          COMMIT_HASH: ${{ steps.getHash.outputs.commitHash }}
+      - name: 触发工作流
+        if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          echo "${COMMIT_HASH}" >.commitHash
-
-      - name: 触发构建工作流
-        if: steps.cacheHash.outputs.cache-hit != 'true'
-        run: |
+          >.cache
           gh workflow run Build
