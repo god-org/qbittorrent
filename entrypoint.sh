@@ -4,7 +4,7 @@ set -euo pipefail
 
 USER_NAME=qbittorrent
 PROFILE_PATH=/config
-CONFIG_FILE="$PROFILE_PATH/qBittorrent/config/qBittorrent.conf"
+CONFIG_FILE=$PROFILE_PATH/qBittorrent/config/qBittorrent.conf
 DOWNLOADS_PATH=/downloads
 
 if [ -n "${PUID:-}" ] && [ "$PUID" -ne "$(id -u "$USER_NAME")" ]; then
