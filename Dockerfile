@@ -6,7 +6,6 @@ COPY --chmod=755 --link entrypoint.sh /opt/
 
 RUN <<EOF
 set -euxo pipefail
-thread_count=$(nproc)
 apk --no-cache upgrade
 apk --no-cache add -t build-dependencies \
   autoconf automake boost-dev boost-static build-base \
@@ -23,12 +22,12 @@ cmake \
   -DCMAKE_INSTALL_LIBDIR=lib \
   -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON \
   -Ddeprecated-functions=OFF
-make -j"$thread_count" install
+make -j"$(nproc)" install
 git clone -b "$QB_BR" --depth=1 --single-branch \
   https://github.com/qbittorrent/qBittorrent /tmp/qBittorrent
 cd /tmp/qBittorrent
 ./configure --prefix=/usr --disable-gui
-make -j"$thread_count" install
+make -j"$(nproc)" install
 ldd /usr/bin/qbittorrent-nox | sort -f
 cp -af /usr/bin/qbittorrent-nox /opt/
 chmod -R +x /opt
