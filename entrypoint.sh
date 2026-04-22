@@ -7,11 +7,11 @@ DL_DIR=/downloads
 
 main() {
   [ -n "$PUID" ] && [ "$PUID" -ne "$(id -u "$APP_USER")" ] &&
-    sed -i "s/^\($APP_USER:x\):[^:]*/\1:$PUID/" /etc/passwd
+    sed -i "s|^\($APP_USER:x\):[^:]*|\1:$PUID|" /etc/passwd
 
   [ -n "$PGID" ] && [ "$PGID" -ne "$(id -g "$APP_USER")" ] &&
-    sed -i "s/^\($APP_USER:x:[^:]*\):[^:]*/\1:$PGID/" /etc/passwd &&
-    sed -i "s/^\($APP_USER:x\):[^:]*/\1:$PGID/" /etc/group
+    sed -i "s|^\($APP_USER:x:[^:]*\):[^:]*|\1:$PGID|" /etc/passwd &&
+    sed -i "s|^\($APP_USER:x\):[^:]*|\1:$PGID|" /etc/group
 
   [ -d "${CONF_FILE%/*}" ] || mkdir -p "${CONF_FILE%/*}"
 
