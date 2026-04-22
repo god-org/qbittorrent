@@ -2,7 +2,7 @@ name: Clean
 
 on:
   schedule:
-    - cron: 0 0 * * *
+    - cron: 0 8 1 * *
   workflow_dispatch:
     inputs:
       f_deep:
