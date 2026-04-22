@@ -1,17 +1,16 @@
 FROM alpine:3.10 AS builder
 
-ARG QB_BR LT_BR
+ARG QB_VER LT_VER
 
 COPY --chmod=755 --link entrypoint.sh /opt/
 
 RUN <<EOF
-set -euxo pipefail
 apk --no-cache upgrade
 apk --no-cache add -t build-dependencies \
   autoconf automake boost-dev boost-static build-base \
   cmake geoip-dev git libtool openssl-dev pkgconfig \
   qt5-qtbase-dev qt5-qtsvg-dev qt5-qttools-dev zlib-dev
-git clone -b "$LT_BR" --recurse-submodules --depth=1 --single-branch \
+git clone -b "$LT_VER" --recurse-submodules --depth=1 --single-branch \
   --shallow-submodules https://github.com/arvidn/libtorrent /tmp/libtorrent
 cd /tmp/libtorrent
 cmake \
@@ -23,7 +22,7 @@ cmake \
   -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON \
   -Ddeprecated-functions=OFF
 make -j"$(nproc)" install
-git clone -b "$QB_BR" --depth=1 --single-branch \
+git clone -b "$QB_VER" --depth=1 --single-branch \
   https://github.com/qbittorrent/qBittorrent /tmp/qBittorrent
 cd /tmp/qBittorrent
 ./configure --prefix=/usr --disable-gui
@@ -38,7 +37,6 @@ EOF
 FROM alpine:3.10
 
 RUN --mount=type=bind,from=builder,source=/opt,target=/opt <<EOF
-set -euxo pipefail
 apk --no-cache upgrade
 apk --no-cache add qt5-qtbase su-exec tini
 cp -af /opt/entrypoint.sh /

@@ -10,62 +10,65 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash -euxo pipefail {0}
     env:
-      QB_BR: v4_1_x
-      LT_BR: RC_1_1
+      QB_VER: v4_1_x
+      LT_VER: RC_1_1
     steps:
       - name: 配置 QEMU 跨架构支持
-        uses: docker/setup-qemu-action@v4.0.0
+        uses: docker/setup-qemu-action@v4
 
       - name: 配置 Docker Buildx 构建工具
-        uses: docker/setup-buildx-action@v4.0.0
+        uses: docker/setup-buildx-action@v4
 
       - name: 登录 Docker 镜像仓库
-        uses: docker/login-action@v4.1.0
+        uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: 登录 GHCR 镜像仓库
-        uses: docker/login-action@v4.1.0
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 生成标签
-        id: tag
+        id: img
         env:
           REPO: ${{ github.repository }}
         run: |
-          tag_list=(
+          list=(
             "ghcr.io/$REPO:latest"
-            "ghcr.io/$REPO:$QB_BR-$LT_BR"
+            "ghcr.io/$REPO:$QB_VER-$LT_VER"
           )
 
-          printf '%s\n' 'tags<<EOF' "${tag_list[@]}" 'EOF' >>"$GITHUB_OUTPUT"
+          printf '%s\n' 'tags<<EOF' "${list[@]}" 'EOF' >>"$GITHUB_OUTPUT"
 
       - name: 构建并推送镜像
-        uses: docker/build-push-action@v7.1.0
+        uses: docker/build-push-action@v7
         with:
           push: true
-          platforms: linux/amd64,linux/arm64,linux/ppc64le,linux/s390x,linux/386,linux/arm/v7,linux/arm/v6
+          platforms: |
+            linux/amd64,linux/arm64,linux/ppc64le
+            linux/s390x,linux/386,linux/arm/v7,linux/arm/v6
           build-args: |
-            QB_BR=${{ env.QB_BR }}
-            LT_BR=${{ env.LT_BR }}
-          tags: ${{ steps.tag.outputs.tags }}
+            QB_VER=${{ env.QB_VER }}
+            LT_VER=${{ env.LT_VER }}
+          tags: ${{ steps.img.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: 发送结果至 Telegram
         uses: appleboy/telegram-action@v1.0.1
+        env:
+          RUN_URL: ${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT_URL: ${{ github.repository }}/commit/${{ github.sha }}
         with:
           to: ${{ secrets.TELEGRAM_TO }}
           token: ${{ secrets.TELEGRAM_TOKEN }}
           format: html
+          disable_web_page_preview: true
           message: |
             <b>🚀 qBittorrent 构建报告</b>
 
@@ -75,7 +78,7 @@ jobs:
             仓库：<code>${{ github.repository }}</code>
             分支：<code>${{ github.ref_name }}</code>
             编号：<code>${{ github.run_number }}</code>
-            版本：<code>${{ env.QB_BR }}-${{ env.LT_BR }}</code>
+            版本：<code>${{ env.QB_VER }}-${{ env.LT_VER }}</code>
 
             <b>👤 触发信息</b>
             账号：<code>${{ github.actor }}</code>
@@ -83,5 +86,5 @@ jobs:
             哈希：<code>${{ github.sha }}</code>
 
             <b>🔗 快速链接</b>
-            <a href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}">📋 查看完整日志</a>
-            <a href="https://github.com/${{ github.repository }}/commit/${{ github.sha }}">💻 查看代码变更</a>
+            <a href="https://github.com/${{ env.RUN_URL }}">📋 查看完整日志</a>
+            <a href="https://github.com/${{ env.COMMIT_URL }}">💻 查看代码变更</a>

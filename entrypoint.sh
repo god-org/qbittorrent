@@ -1,52 +1,41 @@
-#!/bin/sh
+#!/usr/bin/env sh
 
-set -euo pipefail
-
-USER_NAME=qbittorrent
-PROFILE_PATH=/config
-CONFIG_FILE=$PROFILE_PATH/qBittorrent/config/qBittorrent.conf
-DOWNLOADS_PATH=/downloads
+APP_USER=qbittorrent
+CONF_DIR=/config
+CONF_FILE=$CONF_DIR/qBittorrent/config/qBittorrent.conf
+DL_DIR=/downloads
 
 main() {
-  if [ -n "${PUID:-}" ] && [ "$PUID" -ne "$(id -u "$USER_NAME")" ]; then
-    sed -i "s/^$USER_NAME:x:[0-9]*:/$USER_NAME:x:$PUID:/" /etc/passwd
-  fi
+  [ -n "$PUID" ] && [ "$PUID" -ne "$(id -u "$APP_USER")" ] &&
+    sed -i "s/^\($APP_USER:x\):[^:]*/\1:$PUID/" /etc/passwd
 
-  if [ -n "${PGID:-}" ] && [ "$PGID" -ne "$(id -g "$USER_NAME")" ]; then
-    sed -i "s/^\($USER_NAME:x:[0-9]*\):[0-9]*:/\1:$PGID:/" /etc/passwd
-    sed -i "s/^$USER_NAME:x:[0-9]*:/$USER_NAME:x:$PGID:/" /etc/group
-  fi
+  [ -n "$PGID" ] && [ "$PGID" -ne "$(id -g "$APP_USER")" ] &&
+    sed -i "s/^\($APP_USER:x:[^:]*\):[^:]*/\1:$PGID/" /etc/passwd &&
+    sed -i "s/^\($APP_USER:x\):[^:]*/\1:$PGID/" /etc/group
 
-  if [ ! -f "$CONFIG_FILE" ]; then
-    mkdir -p "${CONFIG_FILE%/*}"
-    cat <<EOF >"$CONFIG_FILE"
+  [ -d "${CONF_FILE%/*}" ] || mkdir -p "${CONF_FILE%/*}"
+
+  [ -f "$CONF_FILE" ] || cat <<EOF >"$CONF_FILE"
 [LegalNotice]
 Accepted=true
 
 [Preferences]
 Connection\PortRangeMin=8999
-Downloads\SavePath=$DOWNLOADS_PATH
-Downloads\TempPath=$DOWNLOADS_PATH/temp
+Downloads\SavePath=$DL_DIR
+Downloads\TempPath=$DL_DIR/temp
 EOF
-  fi
 
-  if [ -d "$DOWNLOADS_PATH" ]; then
-    if [ "$(stat -c %u "$DOWNLOADS_PATH")" -ne "$(id -u "$USER_NAME")" ]; then
-      chown "$USER_NAME:" "$DOWNLOADS_PATH"
-    fi
-  fi
+  [ -d "$DL_DIR" ] &&
+    [ "$(stat -c %u "$DL_DIR")" -ne "$(id -u "$APP_USER")" ] &&
+    chown "$APP_USER:" "$DL_DIR"
 
-  if [ -d "$PROFILE_PATH" ]; then
-    if [ "$(stat -c %u "$PROFILE_PATH")" -ne "$(id -u "$USER_NAME")" ]; then
-      chown -R "$USER_NAME:" "$PROFILE_PATH"
-    fi
-  fi
+  [ -d "$CONF_DIR" ] &&
+    [ "$(stat -c %u "$CONF_DIR")" -ne "$(id -u "$APP_USER")" ] &&
+    chown -R "$APP_USER:" "$CONF_DIR"
 
-  if [ -n "${UMASK:-}" ]; then
-    umask "$UMASK"
-  fi
+  [ -z "$UMASK" ] || umask "$UMASK"
 
-  exec su-exec "$USER_NAME" qbittorrent-nox --profile="$PROFILE_PATH" "$@"
+  exec su-exec "$APP_USER" qbittorrent-nox --profile="$CONF_DIR" "$@"
 }
 
 main "$@"
