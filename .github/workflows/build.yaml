@@ -10,9 +10,6 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      QB_VER: v4_1_x
-      LT_VER: RC_1_1
     steps:
       - name: 配置 QEMU 跨架构支持
         uses: docker/setup-qemu-action@v4
@@ -37,6 +34,8 @@ jobs:
         id: img
         env:
           REPO: ${{ github.repository }}
+          QB_VER: v4_1_x
+          LT_VER: RC_1_1
         run: |
           list=(
             "ghcr.io/$REPO:latest"
@@ -53,17 +52,14 @@ jobs:
             linux/amd64,linux/arm64,linux/ppc64le
             linux/s390x,linux/386,linux/arm/v7,linux/arm/v6
           build-args: |
-            QB_VER=${{ env.QB_VER }}
-            LT_VER=${{ env.LT_VER }}
+            QB_VER=v4_1_x
+            LT_VER=RC_1_1
           tags: ${{ steps.img.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: 发送结果至 Telegram
         uses: appleboy/telegram-action@v1.0.1
-        env:
-          RUN_URL: ${{ github.repository }}/actions/runs/${{ github.run_id }}
-          COMMIT_URL: ${{ github.repository }}/commit/${{ github.sha }}
         with:
           to: ${{ secrets.TELEGRAM_TO }}
           token: ${{ secrets.TELEGRAM_TOKEN }}
@@ -78,7 +74,7 @@ jobs:
             仓库：<code>${{ github.repository }}</code>
             分支：<code>${{ github.ref_name }}</code>
             编号：<code>${{ github.run_number }}</code>
-            版本：<code>${{ env.QB_VER }}-${{ env.LT_VER }}</code>
+            版本：<code>v4_1_x-RC_1_1</code>
 
             <b>👤 触发信息</b>
             账号：<code>${{ github.actor }}</code>
@@ -86,5 +82,5 @@ jobs:
             哈希：<code>${{ github.sha }}</code>
 
             <b>🔗 快速链接</b>
-            <a href="https://github.com/${{ env.RUN_URL }}">📋 查看完整日志</a>
-            <a href="https://github.com/${{ env.COMMIT_URL }}">💻 查看代码变更</a>
+            <a href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}">📋 查看完整日志</a>
+            <a href="https://github.com/${{ github.repository }}/commit/${{ github.sha }}">💻 查看代码变更</a>

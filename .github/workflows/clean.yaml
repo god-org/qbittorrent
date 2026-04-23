@@ -32,21 +32,18 @@ jobs:
 
           run_cnt=$(gh run list -L 2 --json databaseId -q length || echo 0)
           rel_cnt=$(gh release list -L 1 --json tagName -q length || echo 0)
-          pkg_raw=$(gh api \
-            "/$api_base/$REPO_OWNER/packages?package_type=container" \
-            --paginate \
-            -q '.[] | select(.repository.name == env.REPO_NAME) | .name' |
-            sort -f || :)
+          pkg_raw=$(gh api "/$api_base/$REPO_OWNER/packages?package_type=container" --paginate \
+            -q '.[] | select(.repository.name == env.REPO_NAME) | .name' | sort -f || :)
 
           pkg_cnt=0 pkg_list=
-          [[ -n $pkg_raw ]] &&
-            mapfile -t pkg_arr <<<"$pkg_raw" &&
-            pkg_cnt=${#pkg_arr[@]} &&
+          if [[ -n $pkg_raw ]]; then
+            mapfile -t pkg_arr <<<"$pkg_raw"
+            pkg_cnt=${#pkg_arr[@]}
             pkg_list=${pkg_raw//$'\n'/,}
+          fi
 
-          printf '%s\n' "api_base=$api_base" "run_cnt=$run_cnt" \
-            "rel_cnt=$rel_cnt" "pkg_cnt=$pkg_cnt" \
-            "pkg_list=$pkg_list" >>"$GITHUB_OUTPUT"
+          printf '%s\n' "api_base=$api_base" "run_cnt=$run_cnt" "rel_cnt=$rel_cnt" \
+            "pkg_cnt=$pkg_cnt" "pkg_list=$pkg_list" >>"$GITHUB_OUTPUT"
 
       - name: 清理 Actions 运行记录
         if: steps.stat.outputs.run_cnt > 1
@@ -83,11 +80,11 @@ jobs:
         if: inputs.f_deep && steps.stat.outputs.pkg_cnt > 0
         env:
           GH_TOKEN: ${{ secrets.CLEAN_TOKEN }}
-          pkg_list: ${{ steps.stat.outputs.pkg_list }}
+          PKG_LIST: ${{ steps.stat.outputs.pkg_list }}
           API_BASE: ${{ steps.stat.outputs.api_base }}
           REPO_OWNER: ${{ github.repository_owner }}
         run: |
-          mapfile -t pkgs <<<"${pkg_list//,/$'\n'}"
+          mapfile -t pkgs <<<"${PKG_LIST//,/$'\n'}"
           for pkg in "${pkgs[@]}"; do
             gh api -X DELETE "/$API_BASE/$REPO_OWNER/packages/container/$pkg"
           done

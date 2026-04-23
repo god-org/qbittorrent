@@ -25,12 +25,10 @@ Downloads\SavePath=$DL_DIR
 Downloads\TempPath=$DL_DIR/temp
 EOF
 
-  [ -d "$DL_DIR" ] &&
-    [ "$(stat -c %u "$DL_DIR")" -ne "$(id -u "$APP_USER")" ] &&
+  [ -d "$DL_DIR" ] && [ "$(stat -c %u "$DL_DIR")" -ne "$(id -u "$APP_USER")" ] &&
     chown "$APP_USER:" "$DL_DIR"
 
-  [ -d "$CONF_DIR" ] &&
-    [ "$(stat -c %u "$CONF_DIR")" -ne "$(id -u "$APP_USER")" ] &&
+  [ -d "$CONF_DIR" ] && [ "$(stat -c %u "$CONF_DIR")" -ne "$(id -u "$APP_USER")" ] &&
     chown -R "$APP_USER:" "$CONF_DIR"
 
   [ -z "$UMASK" ] || umask "$UMASK"
