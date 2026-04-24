@@ -6,10 +6,10 @@ CONF_FILE=$CONF_DIR/qBittorrent/config/qBittorrent.conf
 DL_DIR=/downloads
 
 main() {
-  [ -n "$PUID" ] && [ "$PUID" -ne "$(id -u "$APP_USER")" ] &&
+  [ "$PUID" ] && [ "$PUID" -ne "$(id -u "$APP_USER")" ] &&
     sed -i "s|^\($APP_USER:x\):[^:]*|\1:$PUID|" /etc/passwd
 
-  [ -n "$PGID" ] && [ "$PGID" -ne "$(id -g "$APP_USER")" ] &&
+  [ "$PGID" ] && [ "$PGID" -ne "$(id -g "$APP_USER")" ] &&
     sed -i "s|^\($APP_USER:x:[^:]*\):[^:]*|\1:$PGID|" /etc/passwd &&
     sed -i "s|^\($APP_USER:x\):[^:]*|\1:$PGID|" /etc/group
 
@@ -31,7 +31,7 @@ EOF
   [ -d "$CONF_DIR" ] && [ "$(stat -c %u "$CONF_DIR")" -ne "$(id -u "$APP_USER")" ] &&
     chown -R "$APP_USER:" "$CONF_DIR"
 
-  [ -z "$UMASK" ] || umask "$UMASK"
+  [ "$UMASK" ] && umask "$UMASK"
 
   exec su-exec "$APP_USER" qbittorrent-nox --profile="$CONF_DIR" "$@"
 }

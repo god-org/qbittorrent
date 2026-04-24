@@ -36,7 +36,7 @@ jobs:
             -q '.[] | select(.repository.name == env.REPO_NAME) | .name' | sort -f || :)
 
           pkg_cnt=0 pkg_list=
-          [[ -n $pkg_raw ]] && mapfile -t pkg_arr <<<"$pkg_raw" &&
+          [[ $pkg_raw ]] && mapfile -t pkg_arr <<<"$pkg_raw" &&
             pkg_cnt=${#pkg_arr[@]} && pkg_list=${pkg_raw//$'\n'/,}
 
           printf '%s\n' "api_base=$api_base" "run_cnt=$run_cnt" "rel_cnt=$rel_cnt" \
