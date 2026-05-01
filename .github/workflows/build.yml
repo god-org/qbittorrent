@@ -1,0 +1,84 @@
+name: Build
+
+on:
+  workflow_dispatch:
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  TZ: Asia/Shanghai
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 配置 QEMU 跨架构支持
+        uses: docker/setup-qemu-action@v4
+
+      - name: 配置 Docker Buildx 构建工具
+        uses: docker/setup-buildx-action@v4
+
+      - name: 登录 Docker 镜像仓库
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: 登录 GHCR 镜像仓库
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 生成标签
+        id: img
+        env:
+          REPO: ${{ github.repository }}
+          QB_VER: v4_1_x
+          LT_VER: RC_1_1
+        run: |
+          list=(
+            "ghcr.io/$REPO:latest"
+            "ghcr.io/$REPO:$QB_VER-$LT_VER"
+          )
+
+          printf '%s\n' 'tags<<EOF' "${list[@]}" 'EOF' >>"$GITHUB_OUTPUT"
+
+      - name: 构建并推送镜像
+        uses: docker/build-push-action@v7
+        with:
+          push: true
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            QB_VER=v4_1_x
+            LT_VER=RC_1_1
+          tags: ${{ steps.img.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: 发送结果至 Telegram
+        uses: appleboy/telegram-action@v1.0.1
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          format: html
+          disable_web_page_preview: true
+          message: |
+            <b>🚀 qBittorrent 构建报告</b>
+
+            ${{ job.status == 'success' && '✅ 成功' || '❌ 失败' }}
+
+            <b>📦 项目信息</b>
+            仓库：<code>${{ github.repository }}</code>
+            分支：<code>${{ github.ref_name }}</code>
+            编号：<code>${{ github.run_number }}</code>
+            版本：<code>v4_1_x-RC_1_1</code>
+
+            <b>👤 触发信息</b>
+            账号：<code>${{ github.actor }}</code>
+            触发：<code>${{ github.event_name }}</code>
+            哈希：<code>${{ github.sha }}</code>
+
+            <b>🔗 快速链接</b>
+            <a href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}">📋 查看完整日志</a>
+            <a href="https://github.com/${{ github.repository }}/commit/${{ github.sha }}">💻 查看代码变更</a>
